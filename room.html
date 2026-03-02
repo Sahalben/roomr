@@ -1,0 +1,1002 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Room — ROOMR</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    .room-layout {
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .room-body {
+      display: grid;
+      grid-template-columns: 260px 1fr 220px;
+      flex: 1;
+      min-height: 0;
+      overflow: hidden;
+    }
+
+    /* File drag overlay */
+    .file-drag-shield {
+      position: absolute;
+      inset: 0;
+      border: 2px dashed var(--c-accent);
+      background: rgba(0, 200, 150, .06);
+      border-radius: var(--r-md);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: var(--c-accent);
+      font-weight: 600;
+      z-index: 20;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .15s;
+    }
+
+    .file-drag-shield.show {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    .file-panel {
+      position: relative;
+    }
+
+    /* Mobile panel tabs */
+    .panel-tabs-mobile {
+      display: none;
+      padding: 0 12px;
+      background: var(--c-surface);
+      border-bottom: 1px solid var(--c-border);
+    }
+
+    @media(max-width: 900px) {
+      .panel-tabs-mobile {
+        display: flex;
+      }
+
+      .room-body {
+        grid-template-columns: 1fr;
+      }
+
+      .file-panel,
+      .info-panel {
+        display: none;
+      }
+
+      .file-panel.m-active,
+      .chat-panel.m-active,
+      .info-panel.m-active {
+        display: flex;
+      }
+    }
+
+    /* Folder new-name input */
+    .inline-input {
+      background: var(--c-surface2);
+      border: 1px solid var(--c-accent);
+      border-radius: 5px;
+      padding: 4px 8px;
+      font-size: 12.5px;
+      color: var(--c-text);
+      outline: none;
+      width: 100%;
+      font-family: var(--font-ui);
+    }
+
+    /* File progress bar */
+    .upload-progress {
+      height: 2px;
+      background: var(--c-surface3);
+      border-radius: 1px;
+      overflow: hidden;
+      margin-top: 3px;
+    }
+
+    .upload-progress-fill {
+      height: 100%;
+      background: var(--c-accent);
+      border-radius: 1px;
+      transition: width .3s;
+    }
+
+    /* Room topbar warn states */
+    .room-topbar-timer.warn {
+      color: var(--c-warn) !important;
+    }
+
+    .room-topbar-timer.crit {
+      color: var(--c-danger) !important;
+      animation: blink .8s ease infinite;
+    }
+
+    .info-tab-content {
+      flex: 1;
+      overflow-y: auto;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="room-layout">
+
+    <!-- TOPBAR -->
+    <div class="room-topbar">
+      <a href="dashboard.html" class="btn btn-ghost btn-icon" style="flex-shrink:0;font-size:16px;"
+        title="Back to Dashboard">←</a>
+      <div class="room-topbar-sep"></div>
+      <span class="pulse pulse-green" id="room-status-dot"></span>
+      <div>
+        <div class="room-topbar-name" id="topbar-name">Loading…</div>
+      </div>
+      <div class="room-topbar-code" id="topbar-code"></div>
+      <div style="flex:1;"></div>
+      <div class="room-topbar-timer" id="topbar-timer">⏱ --:--</div>
+      <div class="room-topbar-sep"></div>
+      <button class="btn btn-ghost btn-sm" onclick="openInviteModal()" style="gap:6px;">🔗 Invite</button>
+      <div id="admin-badge"></div>
+      <div style="position:relative;">
+        <div class="avatar" id="topbar-avatar" style="cursor:pointer;" onclick="toggleTopMenu()"></div>
+        <div class="user-dropdown" id="top-dropdown">
+          <div class="user-dropdown-info">
+            <div class="user-dropdown-name" id="td-name"></div>
+            <div class="user-dropdown-email" id="td-email"></div>
+          </div>
+          <div class="dropdown-item" onclick="location.href='dashboard.html'">🏠 Dashboard</div>
+          <div class="dropdown-item danger" onclick="ROOMR.auth.logout()">🚪 Sign Out</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MOBILE PANEL TABS -->
+    <div class="panel-tabs-mobile">
+      <button class="info-tab active" onclick="switchMobilePanel('files',this)">Files</button>
+      <button class="info-tab" onclick="switchMobilePanel('chat',this)">Chat</button>
+      <button class="info-tab" onclick="switchMobilePanel('info',this)">Info</button>
+    </div>
+
+    <div class="room-body">
+
+      <!-- ──────────────────────
+         FILES PANEL
+    ────────────────────── -->
+      <div class="file-panel m-active" id="files-panel">
+        <div class="panel-head">
+          <span>Files</span>
+          <div class="panel-actions">
+            <button class="btn btn-ghost btn-icon-sm" id="add-folder-btn" onclick="promptRootFolder()"
+              title="New Folder">📁+</button>
+            <button class="btn btn-ghost btn-icon-sm" id="upload-btn" onclick="triggerUpload()"
+              title="Upload File">⬆</button>
+          </div>
+        </div>
+        <div class="file-tree" id="file-tree">
+          <div style="padding:24px;text-align:center;color:var(--c-text3);font-size:12px;">Loading files…</div>
+        </div>
+        <div class="upload-drop-zone" id="drop-zone" onclick="triggerUpload()">
+          <div>⬆ Click or drag files here to upload</div>
+          <div style="font-size:11px;margin-top:4px;opacity:.6;">Files live until room expires</div>
+        </div>
+        <div class="file-drag-shield" id="drag-shield">Drop files to upload</div>
+        <input type="file" id="file-input" multiple style="display:none;" onchange="handleFileInput(event)" />
+      </div>
+
+      <!-- ──────────────────────
+         CHAT PANEL
+    ────────────────────── -->
+      <div class="chat-panel m-active" id="chat-panel">
+        <div class="panel-head" style="background:var(--c-surface);">
+          <span>Live Chat</span>
+          <span style="font-size:11px;" id="chat-members-count"></span>
+        </div>
+        <div class="chat-messages" id="chat-messages"></div>
+        <div class="typing-indicator" id="typing-row"></div>
+        <div class="chat-input-area">
+          <div style="flex:1;position:relative;">
+            <textarea class="chat-textarea" id="chat-input"
+              placeholder="Type a message… (Enter to send, Shift+Enter for newline)" rows="1"
+              onkeydown="chatKeyDown(event)" oninput="autoResize(this);broadcastTyping();"></textarea>
+          </div>
+          <button class="chat-send-btn" id="send-btn" onclick="sendMessage()" title="Send">➤</button>
+        </div>
+      </div>
+
+      <!-- ──────────────────────
+         INFO / MEMBERS PANEL
+    ────────────────────── -->
+      <div class="info-panel m-active" id="info-panel">
+        <div class="info-tabs">
+          <button class="info-tab active" onclick="switchInfoTab('perms', this)">Perms</button>
+          <button class="info-tab" onclick="switchInfoTab('members', this)">Members</button>
+          <button class="info-tab" onclick="switchInfoTab('info', this)">Info</button>
+        </div>
+        <div class="info-tab-content">
+
+          <!-- PERMS -->
+          <div class="info-tab-pane active" id="pane-perms" style="padding:14px;">
+            <div id="perms-list"></div>
+            <div id="admin-extra" style="display:none;">
+              <div style="height:1px;background:var(--c-border);margin:16px 0;"></div>
+              <div class="admin-section">
+                <div class="admin-section-title">⚡ Admin Controls</div>
+                <div style="margin-bottom:8px;font-size:12px;color:var(--c-text2);">Extend room duration:</div>
+                <div class="extend-row">
+                  <button class="extend-chip" onclick="extendRoom(30*60*1000)">+30m</button>
+                  <button class="extend-chip" onclick="extendRoom(60*60*1000)">+1h</button>
+                  <button class="extend-chip" onclick="extendRoom(6*60*60*1000)">+6h</button>
+                  <button class="extend-chip" onclick="extendRoom(24*60*60*1000)">+1d</button>
+                </div>
+              </div>
+              <button class="btn btn-danger" style="width:100%;margin-top:8px;font-size:12px;" onclick="killRoom()">
+                🔴 Kill Room Now
+              </button>
+            </div>
+          </div>
+
+          <!-- MEMBERS -->
+          <div class="info-tab-pane" id="pane-members" style="padding:14px;">
+            <div id="members-list"></div>
+          </div>
+
+          <!-- INFO -->
+          <div class="info-tab-pane" id="pane-info" style="padding:14px;">
+            <div class="timer-ring-wrap">
+              <div class="timer-ring">
+                <svg width="90" height="90" viewBox="0 0 90 90">
+                  <circle cx="45" cy="45" r="38" fill="none" stroke="var(--c-surface3)" stroke-width="6" />
+                  <circle id="ring-circ" cx="45" cy="45" r="38" fill="none" stroke="var(--c-accent)" stroke-width="6"
+                    stroke-linecap="round" stroke-dasharray="238.76" stroke-dashoffset="0"
+                    style="transition:stroke-dashoffset 1s linear, stroke .3s;" />
+                </svg>
+                <div class="timer-ring-center">
+                  <div class="timer-ring-time" id="ring-time">--:--</div>
+                  <div class="timer-ring-label">remaining</div>
+                </div>
+              </div>
+            </div>
+            <div id="room-info-list"></div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── INVITE MODAL ── -->
+  <div class="modal-backdrop" id="invite-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Invite Members</h2>
+        <button class="modal-close" onclick="ROOMR.modal.hide('invite-modal')">✕</button>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Room Code</label>
+        <div class="invite-box">
+          <div class="invite-code" id="rm-inv-code">------</div>
+          <button class="copy-btn" id="cp-code" onclick="copyRoomCode()">Copy Code</button>
+        </div>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Shareable Link</label>
+        <div class="invite-box">
+          <div class="invite-link" id="rm-inv-link"></div>
+          <button class="copy-btn" id="cp-link" onclick="copyRoomLink()">Copy Link</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FOLDER NAME MODAL ── -->
+  <div class="modal-backdrop modal-sm" id="folder-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="folder-modal-title">New Folder</h2>
+        <button class="modal-close" onclick="ROOMR.modal.hide('folder-modal')">✕</button>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Folder Name</label>
+        <input id="folder-name-input" class="input" type="text" placeholder="e.g. Documents, Assets…" maxlength="40" />
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-ghost" style="flex:1;" onclick="ROOMR.modal.hide('folder-modal')">Cancel</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="confirmFolder()">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── FILE PREVIEW MODAL ── -->
+  <div class="modal-backdrop modal-lg" id="preview-modal">
+    <div class="modal" style="max-width:680px;">
+      <div class="modal-header">
+        <div>
+          <h2 class="modal-title" id="prev-filename">File Preview</h2>
+          <div style="font-size:12px;color:var(--c-text2);margin-top:3px;" id="prev-filemeta"></div>
+        </div>
+        <button class="modal-close" onclick="ROOMR.modal.hide('preview-modal')">✕</button>
+      </div>
+      <div id="prev-content" style="min-height:200px;"></div>
+      <div style="display:flex;gap:10px;margin-top:16px;">
+        <button class="btn btn-primary btn-sm" onclick="downloadPreviewFile()">⬇ Download</button>
+        <button class="btn btn-ghost btn-sm" onclick="ROOMR.modal.hide('preview-modal')">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── EXPIRED OVERLAY ── -->
+  <div class="expired-overlay" id="expired-overlay">
+    <div class="expired-icon">💨</div>
+    <div class="expired-title">Room Expired</div>
+    <p class="expired-sub">This room's time has run out. All files and messages have been cleared. Nothing remains.</p>
+    <a href="dashboard.html" class="btn btn-primary btn-lg" style="margin-top:8px;">← Back to Dashboard</a>
+  </div>
+
+  <!-- ── CONTEXT MENU ── -->
+  <div class="ctx-menu" id="ctx-menu"></div>
+
+  <script src="core.js"></script>
+  <script>
+    'use strict';
+
+    const me = ROOMR.auth.require();
+    if (!me) throw 0;
+
+    ROOMR.modal.init();
+
+    // ─────────────────────────────────────
+    // Setup & State
+    // ─────────────────────────────────────
+    const params = new URLSearchParams(location.search);
+    let roomId = params.get('id');
+    const codeParam = params.get('code');
+
+    // Join by code if needed
+    if (!roomId && codeParam) {
+      const res = ROOMR.rooms.join(codeParam, me);
+      if (!res.ok) { alert(res.error); location.href = 'dashboard.html'; throw 0; }
+      roomId = res.room.id;
+    }
+    if (!roomId) { location.href = 'dashboard.html'; throw 0; }
+
+    let room = ROOMR.rooms.get(roomId);
+    if (!room) { alert('Room not found.'); location.href = 'dashboard.html'; throw 0; }
+
+    // Auto-join if not member
+    if (!room.members.find(m => m.id === me.id)) {
+      const res = ROOMR.rooms.join(room.code, me);
+      if (!res.ok) { alert(res.error); location.href = 'dashboard.html'; throw 0; }
+      room = ROOMR.rooms.get(roomId);
+    }
+
+    const isAdmin = room.creatorId === me.id;
+    let collapsedFolders = new Set();
+    let pendingFolderParentId = null;
+    let previewFile = null;
+    let lastMsgCount = 0;
+    let typingTimer = null;
+    let lastTypingBroadcast = 0;
+
+    // ─────────────────────────────────────
+    // Init Topbar
+    // ─────────────────────────────────────
+    const acColor = ROOMR.avatarColor(me.name);
+    document.getElementById('topbar-avatar').textContent = ROOMR.initials(me.name);
+    document.getElementById('topbar-avatar').style.background = acColor;
+    document.getElementById('topbar-avatar').style.color = '#000';
+    document.getElementById('td-name').textContent = me.name;
+    document.getElementById('td-email').textContent = me.email;
+    document.getElementById('topbar-name').textContent = room.name;
+    document.getElementById('topbar-code').textContent = room.code;
+
+    if (isAdmin) {
+      document.getElementById('admin-badge').innerHTML = '<span class="badge badge-purple" style="margin-left:6px;">Admin</span>';
+      document.getElementById('admin-extra').style.display = 'block';
+    }
+
+    // ─────────────────────────────────────
+    // BroadcastChannel (cross-tab sync)
+    // ─────────────────────────────────────
+    ROOMR.bc.listen(roomId, ({ type, data }) => {
+      refresh();
+      if (type === 'msg') renderNewMessages();
+      if (type === 'file_add' || type === 'file_del' || type === 'folder_add') renderFileTree();
+      if (type === 'perms_update') renderPerms();
+      if (type === 'room_update') updateTimer();
+      if (type === 'room_killed') document.getElementById('expired-overlay').classList.add('show');
+      if (type === 'typing') showTyping(data.name);
+    });
+
+    function refresh() { room = ROOMR.rooms.get(roomId); }
+
+    // ─────────────────────────────────────
+    // Timer
+    // ─────────────────────────────────────
+    const CIRCUMFERENCE = 2 * Math.PI * 38;
+    let timerWasExpired = false;
+
+    function updateTimer() {
+      refresh();
+      if (!room) return;
+      const left = ROOMR.rooms.timeLeft(room);
+      const pct = ROOMR.rooms.progress(room);
+      const expired = left <= 0;
+
+      const timerEl = document.getElementById('topbar-timer');
+      const ringEl = document.getElementById('ring-circ');
+      const ringTime = document.getElementById('ring-time');
+
+      timerEl.textContent = '⏱ ' + ROOMR.fmtTime(left);
+      ringTime.textContent = ROOMR.fmtTime(left);
+
+      // Color coding
+      const isWarn = pct < 30;
+      const isCrit = pct < 10;
+      timerEl.className = 'room-topbar-timer' + (isCrit ? ' crit' : isWarn ? ' warn' : '');
+      ringEl.style.stroke = isCrit ? 'var(--c-danger)' : isWarn ? 'var(--c-warn)' : 'var(--c-accent)';
+      document.getElementById('room-status-dot').style.background = expired ? 'var(--c-danger)' : isCrit ? 'var(--c-danger)' : 'var(--c-accent)';
+
+      // Ring
+      const offset = CIRCUMFERENCE * (1 - pct / 100);
+      ringEl.style.strokeDashoffset = offset;
+
+      if (expired && !timerWasExpired) {
+        timerWasExpired = true;
+        document.getElementById('expired-overlay').classList.add('show');
+      }
+    }
+
+    setInterval(updateTimer, 1000);
+    updateTimer();
+
+    // ─────────────────────────────────────
+    // Room Info
+    // ─────────────────────────────────────
+    function renderRoomInfo() {
+      refresh();
+      if (!room) return;
+      document.getElementById('room-info-list').innerHTML = `
+    <div class="info-row"><div class="info-row-label">Room Name</div><div class="info-row-val">${ROOMR.escHtml(room.name)}</div></div>
+    <div class="info-row"><div class="info-row-label">Room Code</div><div class="info-row-val" style="font-family:monospace;font-size:16px;letter-spacing:.15em;color:var(--c-accent);">${room.code}</div></div>
+    <div class="info-row"><div class="info-row-label">Created By</div><div class="info-row-val">${ROOMR.escHtml(room.creatorName)}</div></div>
+    <div class="info-row"><div class="info-row-label">Created</div><div class="info-row-val">${ROOMR.fmtDate(room.createdAt)}</div></div>
+    <div class="info-row"><div class="info-row-label">Expires</div><div class="info-row-val">${ROOMR.fmtDate(room.expiresAt)}</div></div>
+    <div class="info-row"><div class="info-row-label">Files</div><div class="info-row-val">${room.files.length}</div></div>
+    <div class="info-row"><div class="info-row-label">Messages</div><div class="info-row-val">${room.messages.filter(m => m.type !== 'system').length}</div></div>
+  `;
+    }
+    renderRoomInfo();
+
+    // ─────────────────────────────────────
+    // Permissions
+    // ─────────────────────────────────────
+    function renderPerms() {
+      refresh();
+      if (!room) return;
+      const p = room.permissions;
+      const perms = [
+        { key: 'membersCanUpload', label: 'Allow uploads', desc: 'Members can upload files' },
+        { key: 'membersCanDelete', label: 'Allow deletions', desc: 'Members can delete files' },
+        { key: 'membersCanChat', label: 'Allow chat', desc: 'Members can send messages' },
+        { key: 'membersCanCreateFolders', label: 'Create folders', desc: 'Members can create folders' },
+      ];
+      document.getElementById('perms-list').innerHTML = perms.map(perm => `
+    <div class="perm-row">
+      <div class="perm-info"><h4>${perm.label}</h4><p>${perm.desc}</p></div>
+      <label class="toggle">
+        <input type="checkbox" ${p[perm.key] ? 'checked' : ''} ${!isAdmin ? 'disabled' : ''}
+          onchange="updatePerm('${perm.key}', this.checked)"/>
+        <div class="toggle-track"></div>
+      </label>
+    </div>
+  `).join('');
+    }
+    renderPerms();
+
+    function updatePerm(key, value) {
+      if (!isAdmin) return;
+      ROOMR.rooms.updatePerms(roomId, { [key]: value });
+      refresh();
+      ROOMR.toast('Permission updated.');
+    }
+
+    // ─────────────────────────────────────
+    // Members
+    // ─────────────────────────────────────
+    function renderMembers() {
+      refresh();
+      if (!room) return;
+      document.getElementById('chat-members-count').textContent = room.members.length + ' members';
+      document.getElementById('members-list').innerHTML = room.members.map(m => {
+        const color = ROOMR.avatarColor(m.name);
+        return `
+    <div class="member-row">
+      <div class="avatar avatar-sm" style="background:${color};color:#000;">${ROOMR.initials(m.name)}</div>
+      <div class="member-info">
+        <div class="member-name">${ROOMR.escHtml(m.name)}${m.id === me.id ? ' <span style="color:var(--c-text3);font-size:10px;">(you)</span>' : ''}</div>
+        <div class="member-role">${m.role}</div>
+      </div>
+      ${m.role === 'admin' ? '<span class="badge badge-purple" style="font-size:9px;padding:2px 6px;">admin</span>' : ''}
+    </div>`;
+      }).join('');
+    }
+    renderMembers();
+
+    // ─────────────────────────────────────
+    // File Tree
+    // ─────────────────────────────────────
+    function canUpload() { return isAdmin || room.permissions.membersCanUpload; }
+    function canDelete() { return isAdmin || room.permissions.membersCanDelete; }
+    function canCreateFolders() { return isAdmin || room.permissions.membersCanCreateFolders; }
+
+    document.getElementById('add-folder-btn').style.display = canCreateFolders() ? '' : 'none';
+    document.getElementById('upload-btn').style.display = canUpload() ? '' : 'none';
+    document.querySelector('.upload-drop-zone').style.display = canUpload() ? '' : 'none';
+
+    function renderFileTree() {
+      refresh();
+      if (!room) return;
+      const tree = document.getElementById('file-tree');
+
+      const rootFolders = room.folders.filter(f => !f.parentId);
+      const rootFiles = room.files.filter(f => !f.folderId);
+
+      if (!rootFolders.length && !rootFiles.length) {
+        tree.innerHTML = `<div style="padding:24px 12px;text-align:center;color:var(--c-text3);font-size:12.5px;line-height:1.6;">No files yet.<br>${canUpload() ? 'Upload a file to get started.' : 'Admin must upload files.'}</div>`;
+        return;
+      }
+
+      tree.innerHTML = rootFolders.map(f => renderFolder(f)).join('') + rootFiles.map(f => renderFile(f)).join('');
+    }
+
+    function renderFolder(folder) {
+      const isOpen = !collapsedFolders.has(folder.id);
+      const children = room.folders.filter(f => f.parentId === folder.id);
+      const files = room.files.filter(f => f.folderId === folder.id);
+      const total = children.length + files.length;
+
+      return `
+  <div class="tree-folder">
+    <div class="tree-folder-head" onclick="toggleFolder('${folder.id}')" oncontextmenu="folderCtx(event,'${folder.id}')">
+      <span class="tree-folder-arrow ${isOpen ? 'open' : ''}">▶</span>
+      <span style="font-size:14px;">📁</span>
+      <span style="flex:1;">${ROOMR.escHtml(folder.name)}</span>
+      <span style="font-size:10px;color:var(--c-text3);">${total}</span>
+    </div>
+    ${isOpen ? `<div class="tree-folder-children">
+      ${children.map(c => renderFolder(c)).join('')}
+      ${files.map(f => renderFile(f)).join('')}
+      ${canUpload() ? `<div class="tree-file" style="color:var(--c-text3);font-size:11.5px;" onclick="uploadToFolder('${folder.id}')"><span style="font-size:13px;">⬆</span> Upload here</div>` : ''}
+    </div>` : ''}
+  </div>`;
+    }
+
+    function renderFile(file) {
+      const owned = file.uploadedBy === me.id;
+      const canDel = canDelete() || owned;
+      return `
+  <div class="tree-file" onclick="openPreview('${file.id}')" oncontextmenu="fileCtx(event,'${file.id}')">
+    <span class="tree-file-icon">${ROOMR.fileIcon(file.name)}</span>
+    <span class="tree-file-name" title="${ROOMR.escHtml(file.name)}">${ROOMR.escHtml(file.name)}</span>
+    <span class="tree-file-size">${ROOMR.fmtSize(file.size)}</span>
+    ${canDel ? `<button class="tree-file-del" onclick="doDeleteFile('${file.id}');event.stopPropagation();" title="Delete">🗑</button>` : ''}
+  </div>`;
+    }
+
+    function toggleFolder(id) {
+      collapsedFolders.has(id) ? collapsedFolders.delete(id) : collapsedFolders.add(id);
+      renderFileTree();
+    }
+
+    renderFileTree();
+
+    // ─────────────────────────────────────
+    // Upload
+    // ─────────────────────────────────────
+    let uploadFolderId = null;
+
+    function triggerUpload(folderId) {
+      if (!canUpload()) { ROOMR.toast('Uploads are disabled for this room.', 'error'); return; }
+      uploadFolderId = folderId || null;
+      document.getElementById('file-input').click();
+    }
+
+    function uploadToFolder(folderId) {
+      triggerUpload(folderId);
+    }
+
+    function handleFileInput(e) {
+      const files = Array.from(e.target.files);
+      processFiles(files, uploadFolderId);
+      e.target.value = '';
+      uploadFolderId = null;
+    }
+
+    function processFiles(files, folderId) {
+      if (!canUpload()) { ROOMR.toast('Uploads are disabled.', 'error'); return; }
+      refresh();
+      if (!room || ROOMR.rooms.isExpired(room)) { ROOMR.toast('Room has expired.', 'error'); return; }
+
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onload = ev => {
+          const fileObj = {
+            id: ROOMR.uid(),
+            name: file.name,
+            size: file.size,
+            type: file.type,
+            folderId: folderId || null,
+            uploadedBy: me.id,
+            uploadedByName: me.name,
+            ts: ROOMR.now(),
+            data: ev.target.result,
+          };
+          ROOMR.rooms.addFile(roomId, fileObj);
+
+          // System message in chat
+          const sysMsg = { id: ROOMR.uid(), type: 'system', text: me.name + ' uploaded ' + file.name, ts: ROOMR.now() };
+          ROOMR.rooms.addMsg(roomId, sysMsg);
+
+          refresh();
+          renderFileTree();
+          renderAllMessages();
+          lastMsgCount = room.messages.length;
+          ROOMR.toast(file.name + ' uploaded!');
+        };
+        reader.readAsDataURL(file);
+      });
+    }
+
+    // Drag & drop
+    const filesPanel = document.getElementById('files-panel');
+    const dragShield = document.getElementById('drag-shield');
+
+    document.addEventListener('dragover', e => e.preventDefault());
+    document.addEventListener('drop', e => e.preventDefault());
+
+    filesPanel.addEventListener('dragenter', () => dragShield.classList.add('show'));
+    filesPanel.addEventListener('dragleave', e => { if (!filesPanel.contains(e.relatedTarget)) dragShield.classList.remove('show'); });
+    filesPanel.addEventListener('drop', e => {
+      e.preventDefault(); dragShield.classList.remove('show');
+      processFiles(Array.from(e.dataTransfer.files), null);
+    });
+
+    function doDeleteFile(fileId) {
+      if (!confirm('Delete this file? This cannot be undone.')) return;
+      ROOMR.rooms.deleteFile(roomId, fileId);
+      refresh(); renderFileTree();
+      ROOMR.toast('File deleted.');
+    }
+
+    // ─────────────────────────────────────
+    // Folders
+    // ─────────────────────────────────────
+    function promptRootFolder() { promptFolder(null, 'New Root Folder'); }
+    function promptFolder(parentId, title) {
+      if (!canCreateFolders()) { ROOMR.toast('Folder creation is disabled.', 'error'); return; }
+      pendingFolderParentId = parentId;
+      document.getElementById('folder-modal-title').textContent = title || 'New Folder';
+      document.getElementById('folder-name-input').value = '';
+      ROOMR.modal.show('folder-modal');
+      setTimeout(() => document.getElementById('folder-name-input').focus(), 150);
+    }
+
+    function confirmFolder() {
+      const name = document.getElementById('folder-name-input').value.trim();
+      if (!name) return;
+      ROOMR.rooms.addFolder(roomId, name, pendingFolderParentId);
+      ROOMR.modal.hide('folder-modal');
+      refresh(); renderFileTree();
+      ROOMR.toast('Folder "' + name + '" created.');
+    }
+    document.getElementById('folder-name-input').addEventListener('keydown', e => { if (e.key === 'Enter') confirmFolder(); });
+
+    function deleteFolder(folderId) {
+      if (!isAdmin) return;
+      if (!confirm('Delete this folder and all its contents?')) return;
+      ROOMR.rooms.deleteFolder(roomId, folderId);
+      refresh(); renderFileTree();
+      ROOMR.toast('Folder deleted.');
+    }
+
+    // ─────────────────────────────────────
+    // File Preview
+    // ─────────────────────────────────────
+    function openPreview(fileId) {
+      refresh();
+      const file = room.files.find(f => f.id === fileId);
+      if (!file) return;
+      previewFile = file;
+      document.getElementById('prev-filename').textContent = file.name;
+      document.getElementById('prev-filemeta').textContent = ROOMR.fmtSize(file.size) + ' · Uploaded by ' + file.uploadedByName + ' · ' + ROOMR.fmtDate(file.ts);
+
+      const ext = file.name.split('.').pop().toLowerCase();
+      const imgExts = ['jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'bmp'];
+      const codeExts = ['txt', 'md', 'js', 'ts', 'py', 'html', 'css', 'json', 'csv', 'xml', 'yaml', 'yml', 'sh', 'bash'];
+      const content = document.getElementById('prev-content');
+
+      if (imgExts.includes(ext) && file.data) {
+        content.innerHTML = `<img id="preview-img" src="${file.data}" alt="${ROOMR.escHtml(file.name)}" style="max-width:100%;max-height:60vh;border-radius:var(--r-md);object-fit:contain;display:block;margin:0 auto;"/>`;
+      } else if (ext === 'pdf' && file.data) {
+        content.innerHTML = `<iframe id="preview-iframe" src="${file.data}" style="width:100%;height:55vh;border:none;border-radius:var(--r-md);"></iframe>`;
+      } else if (codeExts.includes(ext) && file.data) {
+        try {
+          const raw = atob(file.data.split(',')[1] || '');
+          content.innerHTML = `<pre id="preview-text">${ROOMR.escHtml(raw.slice(0, 8000))}${raw.length > 8000 ? '\n\n… (truncated)' : ''}</pre>`;
+        } catch {
+          content.innerHTML = `<div style="text-align:center;padding:40px;color:var(--c-text2);">Could not decode file content.</div>`;
+        }
+      } else {
+        content.innerHTML = `<div style="text-align:center;padding:40px;">
+      <div style="font-size:48px;margin-bottom:12px;">${ROOMR.fileIcon(file.name)}</div>
+      <div style="font-size:16px;font-weight:600;margin-bottom:6px;">${ROOMR.escHtml(file.name)}</div>
+      <div style="font-size:13px;color:var(--c-text2);">${ROOMR.fmtSize(file.size)}</div>
+      <div style="font-size:12px;color:var(--c-text3);margin-top:8px;">Preview not available for this file type.<br>Click Download to save the file.</div>
+    </div>`;
+      }
+      ROOMR.modal.show('preview-modal');
+    }
+
+    function downloadPreviewFile() {
+      if (!previewFile?.data) return;
+      const a = document.createElement('a');
+      a.href = previewFile.data;
+      a.download = previewFile.name;
+      a.click();
+    }
+
+    // ─────────────────────────────────────
+    // Context Menus
+    // ─────────────────────────────────────
+    const ctxMenu = document.getElementById('ctx-menu');
+
+    function openCtx(x, y, items) {
+      ctxMenu.innerHTML = items.map(item =>
+        item === 'sep'
+          ? '<div class="ctx-sep"></div>'
+          : `<div class="ctx-item ${item.danger ? 'danger' : ''}" onclick="${item.fn}">${item.icon} ${ROOMR.escHtml(item.label)}</div>`
+      ).join('');
+      ctxMenu.style.left = Math.min(x, window.innerWidth - 170) + 'px';
+      ctxMenu.style.top = Math.min(y, window.innerHeight - ctxMenu.offsetHeight - 40) + 'px';
+      ctxMenu.classList.add('open');
+    }
+
+    function fileCtx(e, fileId) {
+      e.preventDefault(); e.stopPropagation();
+      refresh();
+      const file = room.files.find(f => f.id === fileId);
+      if (!file) return;
+      const owned = file.uploadedBy === me.id;
+      const items = [
+        { icon: '👁', label: 'Preview', fn: `openPreview('${fileId}');closeCtx()` },
+        { icon: '⬇', label: 'Download', fn: `downloadById('${fileId}');closeCtx()` },
+        'sep',
+      ];
+      if (canDelete() || owned) items.push({ icon: '🗑', label: 'Delete', danger: true, fn: `doDeleteFile('${fileId}');closeCtx()` });
+      openCtx(e.clientX, e.clientY, items);
+    }
+
+    function folderCtx(e, folderId) {
+      e.preventDefault(); e.stopPropagation();
+      const items = [];
+      if (canCreateFolders()) items.push({ icon: '📁', label: 'New Subfolder', fn: `promptFolder('${folderId}','New Subfolder');closeCtx()` });
+      if (canUpload()) items.push({ icon: '⬆', label: 'Upload Here', fn: `uploadToFolder('${folderId}');closeCtx()` });
+      if (isAdmin) { items.push('sep'); items.push({ icon: '🗑', label: 'Delete Folder', danger: true, fn: `deleteFolder('${folderId}');closeCtx()` }); }
+      openCtx(e.clientX, e.clientY, items);
+    }
+
+    function closeCtx() { ctxMenu.classList.remove('open'); }
+    document.addEventListener('click', closeCtx);
+
+    function downloadById(fileId) {
+      refresh();
+      const file = room.files.find(f => f.id === fileId);
+      if (!file?.data) return;
+      const a = document.createElement('a'); a.href = file.data; a.download = file.name; a.click();
+    }
+
+    // ─────────────────────────────────────
+    // Chat
+    // ─────────────────────────────────────
+    function renderAllMessages() {
+      refresh();
+      if (!room) return;
+      const container = document.getElementById('chat-messages');
+      const wasAtBottom = container.scrollHeight - container.scrollTop - container.clientHeight < 60;
+      container.innerHTML = '';
+      room.messages.forEach(m => appendMsg(m, false));
+      if (wasAtBottom) container.scrollTop = container.scrollHeight;
+    }
+
+    function appendMsg(msg, scroll = true) {
+      const container = document.getElementById('chat-messages');
+
+      if (msg.type === 'system') {
+        const el = document.createElement('div');
+        el.className = 'sys-msg';
+        el.innerHTML = `<div class="sys-msg-text">${ROOMR.escHtml(msg.text)}</div>`;
+        container.appendChild(el);
+      } else {
+        const own = msg.userId === me.id;
+        const time = new Date(msg.ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const color = ROOMR.avatarColor(msg.userName || '?');
+
+        const wrap = document.createElement('div');
+        wrap.className = 'msg-group';
+
+        const meta = `<div class="msg-meta"><span class="msg-name">${own ? 'You' : ROOMR.escHtml(msg.userName || 'Unknown')}</span><span class="msg-time">${time}</span></div>`;
+        const av = `<div class="avatar avatar-sm" style="background:${color};color:#000;flex-shrink:0;">${ROOMR.initials(msg.userName || '?')}</div>`;
+
+        wrap.innerHTML = `
+      <div class="msg-row ${own ? 'own' : ''}">
+        ${own ? '<div class="msg-spacer"></div>' : av}
+        <div>
+          ${meta}
+          <div class="msg-bubble">${ROOMR.escHtml(msg.text || '')}</div>
+        </div>
+        ${own ? av : '<div class="msg-spacer"></div>'}
+      </div>`;
+        container.appendChild(wrap);
+      }
+
+      if (scroll) container.scrollTop = container.scrollHeight;
+    }
+
+    function sendMessage() {
+      refresh();
+      if (!room) return;
+      if (!isAdmin && !room.permissions.membersCanChat) { ROOMR.toast('Chat is disabled.', 'error'); return; }
+      if (ROOMR.rooms.isExpired(room)) { ROOMR.toast('Room has expired.', 'error'); return; }
+
+      const input = document.getElementById('chat-input');
+      const text = input.value.trim();
+      if (!text) return;
+
+      const msg = { id: ROOMR.uid(), type: 'chat', userId: me.id, userName: me.name, text, ts: ROOMR.now() };
+      ROOMR.rooms.addMsg(roomId, msg);
+      appendMsg(msg, true);
+      lastMsgCount = (room.messages?.length || 0) + 1;
+      input.value = '';
+      input.style.height = '';
+    }
+
+    function chatKeyDown(e) {
+      if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+    }
+
+    function autoResize(el) {
+      el.style.height = '';
+      el.style.height = Math.min(el.scrollHeight, 120) + 'px';
+    }
+
+    function broadcastTyping() {
+      const now = Date.now();
+      if (now - lastTypingBroadcast < 1800) return;
+      lastTypingBroadcast = now;
+      try {
+        const bc = new BroadcastChannel('rr:' + roomId);
+        bc.postMessage({ type: 'typing', data: { name: me.name } });
+        bc.close();
+      } catch { }
+    }
+
+    function showTyping(name) {
+      if (name === me.name) return;
+      const row = document.getElementById('typing-row');
+      row.innerHTML = `<div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div><span style="margin-left:6px;font-size:11px;color:var(--c-text3);">${ROOMR.escHtml(name)} is typing…</span>`;
+      clearTimeout(typingTimer);
+      typingTimer = setTimeout(() => { row.innerHTML = ''; }, 3000);
+    }
+
+    // Poll for new messages (same-tab scenario)
+    setInterval(() => {
+      refresh();
+      if (!room) return;
+      if (room.messages.length > lastMsgCount) {
+        room.messages.slice(lastMsgCount).forEach(msg => {
+          if (msg.userId !== me.id || msg.type === 'system') appendMsg(msg, true);
+        });
+        lastMsgCount = room.messages.length;
+      }
+      renderRoomInfo();
+      renderMembers();
+      // Also keep permissions in sync
+      renderPerms();
+    }, 1500);
+
+    // ─────────────────────────────────────
+    // Admin Controls
+    // ─────────────────────────────────────
+    function extendRoom(ms) {
+      if (!isAdmin) return;
+      ROOMR.rooms.extend(roomId, ms);
+      refresh();
+      ROOMR.toast('Room extended by ' + ROOMR.fmtTime(ms) + '.');
+      updateTimer();
+    }
+
+    function killRoom() {
+      if (!isAdmin || !confirm('Kill this room NOW? All data will be lost immediately.')) return;
+      ROOMR.rooms.kill(roomId);
+      document.getElementById('expired-overlay').classList.add('show');
+    }
+
+    // ─────────────────────────────────────
+    // Invite
+    // ─────────────────────────────────────
+    function openInviteModal() {
+      document.getElementById('rm-inv-code').textContent = room.code;
+      document.getElementById('rm-inv-link').textContent = location.origin + location.pathname + '?code=' + room.code;
+      ROOMR.modal.show('invite-modal');
+    }
+
+    function copyRoomCode() {
+      navigator.clipboard.writeText(room.code);
+      const btn = document.getElementById('cp-code'); btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy Code'; btn.classList.remove('copied'); }, 2000);
+    }
+
+    function copyRoomLink() {
+      navigator.clipboard.writeText(document.getElementById('rm-inv-link').textContent);
+      const btn = document.getElementById('cp-link'); btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy Link'; btn.classList.remove('copied'); }, 2000);
+    }
+
+    // ─────────────────────────────────────
+    // Info Panel Tabs
+    // ─────────────────────────────────────
+    function switchInfoTab(pane, btn) {
+      document.querySelectorAll('#info-panel .info-tab').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.info-tab-pane').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById('pane-' + pane).classList.add('active');
+    }
+
+    // ─────────────────────────────────────
+    // Mobile Panel Switch
+    // ─────────────────────────────────────
+    function switchMobilePanel(panel, btn) {
+      document.querySelectorAll('.panel-tabs-mobile .info-tab').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      ['files-panel', 'chat-panel', 'info-panel'].forEach(id => document.getElementById(id).classList.remove('m-active'));
+      const map = { files: 'files-panel', chat: 'chat-panel', info: 'info-panel' };
+      document.getElementById(map[panel]).classList.add('m-active');
+    }
+
+    // ─────────────────────────────────────
+    // User Menu
+    // ─────────────────────────────────────
+    function toggleTopMenu() { document.getElementById('top-dropdown').classList.toggle('open'); }
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#topbar-avatar') && !e.target.closest('#top-dropdown'))
+        document.getElementById('top-dropdown').classList.remove('open');
+    });
+
+    // ─────────────────────────────────────
+    // Init — Load messages & sys join msg
+    // ─────────────────────────────────────
+    renderAllMessages();
+    lastMsgCount = room.messages.length;
+
+    // Post join message
+    const joinMsg = { id: ROOMR.uid(), type: 'system', text: me.name + ' joined the room', ts: ROOMR.now() };
+    ROOMR.rooms.addMsg(roomId, joinMsg);
+    appendMsg(joinMsg, true);
+    lastMsgCount++;
+
+    document.getElementById('chat-messages').scrollTop = document.getElementById('chat-messages').scrollHeight;
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sign In — ROOMR</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div class="auth-root">
+    <div class="auth-bg">
+      <div class="auth-bg-orb auth-bg-orb-1"></div>
+      <div class="auth-bg-orb auth-bg-orb-2"></div>
+      <div class="auth-bg-grid"></div>
+    </div>
+    <div class="auth-box slide-up">
+      <a href="index.html" class="auth-logo">⏱ ROOMR</a>
+      <h1 class="auth-title">Welcome back</h1>
+      <p class="auth-sub">Sign in to your ROOMR account.</p>
+
+      <div class="form-error" id="err"><span>✕</span> <span id="err-text"></span></div>
+
+      <div class="form-field">
+        <label class="form-label">Email</label>
+        <input id="f-email" class="input" type="email" placeholder="you@example.com" autocomplete="email" />
+      </div>
+      <div class="form-field">
+        <label class="form-label">Password</label>
+        <input id="f-pw" class="input" type="password" placeholder="Your password" />
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;margin-top:4px;padding:12px;" id="submit-btn"
+        onclick="doLogin()">
+        Sign In →
+      </button>
+
+      <div class="auth-footer">Don't have an account? <a href="signup.html">Sign up free</a></div>
+    </div>
+  </div>
+  <script src="core.js"></script>
+  <script>
+    if (ROOMR.auth.me()) location.href = 'dashboard.html';
+
+    function doLogin() {
+      const email = document.getElementById('f-email').value.trim();
+      const pw = document.getElementById('f-pw').value;
+      const errEl = document.getElementById('err');
+      const errTxt = document.getElementById('err-text');
+      errEl.classList.remove('show');
+
+      if (!email || !pw) { errTxt.textContent = 'Please fill in all fields.'; errEl.classList.add('show'); return; }
+
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
+
+      setTimeout(() => {
+        const result = ROOMR.auth.login(email, pw);
+        if (!result.ok) { errTxt.textContent = result.error; errEl.classList.add('show'); btn.disabled = false; btn.textContent = 'Sign In →'; return; }
+        const next = new URLSearchParams(location.search).get('next') || 'dashboard.html';
+        location.href = next;
+      }, 300);
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+  </script>
+</body>
+
+</html>

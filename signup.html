@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Sign Up — ROOMR</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body>
+  <div class="auth-root">
+    <div class="auth-bg">
+      <div class="auth-bg-orb auth-bg-orb-1"></div>
+      <div class="auth-bg-orb auth-bg-orb-2"></div>
+      <div class="auth-bg-grid"></div>
+    </div>
+    <div class="auth-box slide-up">
+      <a href="index.html" class="auth-logo">⏱ ROOMR</a>
+      <h1 class="auth-title">Create your account</h1>
+      <p class="auth-sub">Start collaborating ephemerally — it's free.</p>
+
+      <div class="form-error" id="err"><span>✕</span> <span id="err-text"></span></div>
+
+      <div class="form-field">
+        <label class="form-label">Full Name</label>
+        <input id="f-name" class="input" type="text" placeholder="Your full name" autocomplete="name" />
+      </div>
+      <div class="form-field">
+        <label class="form-label">Email</label>
+        <input id="f-email" class="input" type="email" placeholder="you@example.com" autocomplete="email" />
+      </div>
+      <div class="form-field">
+        <label class="form-label">Password</label>
+        <input id="f-pw" class="input" type="password" placeholder="At least 6 characters" />
+      </div>
+      <div class="form-field">
+        <label class="form-label">Confirm Password</label>
+        <input id="f-pw2" class="input" type="password" placeholder="Repeat password" />
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;margin-top:4px;padding:12px;" id="submit-btn"
+        onclick="doSignup()">
+        Create Account →
+      </button>
+
+      <div class="auth-footer">Already have an account? <a href="signin.html">Sign in</a></div>
+    </div>
+  </div>
+  <script src="core.js"></script>
+  <script>
+    if (ROOMR.auth.me()) location.href = 'dashboard.html';
+
+    function doSignup() {
+      const name = document.getElementById('f-name').value.trim();
+      const email = document.getElementById('f-email').value.trim();
+      const pw = document.getElementById('f-pw').value;
+      const pw2 = document.getElementById('f-pw2').value;
+      const errEl = document.getElementById('err');
+      const errTxt = document.getElementById('err-text');
+      errEl.classList.remove('show');
+
+      if (!name || !email || !pw) { errTxt.textContent = 'All fields are required.'; errEl.classList.add('show'); return; }
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { errTxt.textContent = 'Please enter a valid email.'; errEl.classList.add('show'); return; }
+      if (pw.length < 6) { errTxt.textContent = 'Password must be at least 6 characters.'; errEl.classList.add('show'); return; }
+      if (pw !== pw2) { errTxt.textContent = 'Passwords do not match.'; errEl.classList.add('show'); return; }
+
+      const btn = document.getElementById('submit-btn');
+      btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
+
+      setTimeout(() => {
+        const result = ROOMR.auth.register(name, email, pw);
+        if (!result.ok) { errTxt.textContent = result.error; errEl.classList.add('show'); btn.disabled = false; btn.textContent = 'Create Account →'; return; }
+        ROOMR.auth.login(email, pw);
+        location.href = 'dashboard.html';
+      }, 400);
+    }
+
+    document.addEventListener('keydown', e => { if (e.key === 'Enter') doSignup(); });
+  </script>
+</body>
+
+</html>

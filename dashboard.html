@@ -1,0 +1,520 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Dashboard — ROOMR</title>
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body {
+      overflow: hidden;
+    }
+
+    .dash-layout {
+      height: 100vh;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="dash-layout">
+
+    <!-- SIDEBAR -->
+    <div class="dash-body">
+      <aside class="dash-sidebar">
+        <div class="dash-sidebar-brand">⏱ ROOMR</div>
+
+        <div class="nav-section-label">Rooms</div>
+        <div class="nav-item active" id="nav-my" onclick="setTab('my')">
+          <span class="nav-item-icon">🏠</span> My Rooms
+          <span id="my-count"
+            style="margin-left:auto;font-size:11px;background:var(--c-surface3);border-radius:10px;padding:1px 6px;"></span>
+        </div>
+        <div class="nav-item" id="nav-joined" onclick="setTab('joined')">
+          <span class="nav-item-icon">🔗</span> Joined Rooms
+          <span id="joined-count"
+            style="margin-left:auto;font-size:11px;background:var(--c-surface3);border-radius:10px;padding:1px 6px;"></span>
+        </div>
+
+        <div class="nav-section-label" style="margin-top:8px;">Actions</div>
+        <div class="nav-item" onclick="openCreateModal()">
+          <span class="nav-item-icon">＋</span> Create Room
+        </div>
+        <div class="nav-item" onclick="focusJoin()">
+          <span class="nav-item-icon">🚪</span> Join a Room
+        </div>
+
+        <div class="dash-sidebar-footer">
+          <div class="user-card" id="user-card-btn" onclick="toggleUserMenu()">
+            <div class="avatar" id="sidebar-avatar" style="flex-shrink:0;"></div>
+            <div class="user-card-info">
+              <div class="user-card-name" id="sidebar-name"></div>
+              <div class="user-card-email" id="sidebar-email"></div>
+            </div>
+            <span style="color:var(--c-text3);font-size:14px;">⋮</span>
+          </div>
+          <div class="user-dropdown" id="user-dropdown"
+            style="bottom:calc(100% + 8px);top:auto;left:0;right:0;width:auto;">
+            <div class="user-dropdown-info">
+              <div class="user-dropdown-name" id="dd-name"></div>
+              <div class="user-dropdown-email" id="dd-email"></div>
+            </div>
+            <div class="dropdown-item" onclick="openProfileModal()">👤 Edit Profile</div>
+            <div class="dropdown-item danger" onclick="ROOMR.auth.logout()">🚪 Sign Out</div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- MAIN -->
+      <main class="dash-main">
+        <!-- JOIN BAR -->
+        <div class="join-bar" id="join-bar">
+          <span class="join-bar-label">🚪 Have a room code?</span>
+          <input id="join-input" class="join-bar-code" type="text" placeholder="ENTER CODE" maxlength="6"
+            oninput="this.value=this.value.toUpperCase().replace(/[^A-Z0-9]/g,'')" />
+          <button class="btn btn-primary" onclick="joinRoom()">Join Room →</button>
+        </div>
+
+        <!-- HEADER + TABS -->
+        <div class="dash-page-header">
+          <div>
+            <div class="dash-page-title" id="page-title">My Rooms</div>
+            <div style="font-size:13px;color:var(--c-text2);margin-top:3px;" id="page-sub">Rooms you created</div>
+          </div>
+          <button class="btn btn-primary" onclick="openCreateModal()">＋ Create Room</button>
+        </div>
+
+        <div class="tabs">
+          <div class="tab active" id="tab-my" onclick="setTab('my')">My Rooms</div>
+          <div class="tab" id="tab-joined" onclick="setTab('joined')">Joined</div>
+          <div class="tab" id="tab-all" onclick="setTab('all')">All</div>
+        </div>
+
+        <!-- ROOMS GRID -->
+        <div id="rooms-grid" class="rooms-grid slide-up"></div>
+      </main>
+    </div>
+  </div>
+
+  <!-- ── CREATE ROOM MODAL ── -->
+  <div class="modal-backdrop" id="create-modal">
+    <div class="modal modal-lg">
+      <div class="modal-header">
+        <h2 class="modal-title">Create a Room</h2>
+        <button class="modal-close" onclick="ROOMR.modal.hide('create-modal')">✕</button>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label">Room Name</label>
+        <input id="cr-name" class="input" type="text" placeholder="e.g. Project Kickoff, Design Review…"
+          maxlength="60" />
+      </div>
+      <div class="form-field">
+        <label class="form-label">Description <span
+            style="color:var(--c-text3);font-weight:400;text-transform:none;">(optional)</span></label>
+        <input id="cr-desc" class="input" type="text" placeholder="Short description of the room's purpose"
+          maxlength="100" />
+      </div>
+      <div class="form-field">
+        <label class="form-label">Room Duration</label>
+        <div class="duration-grid" id="duration-grid">
+          <div class="duration-opt" data-ms="1800000">30 min</div>
+          <div class="duration-opt selected" data-ms="3600000">1 hour</div>
+          <div class="duration-opt" data-ms="10800000">3 hours</div>
+          <div class="duration-opt" data-ms="21600000">6 hours</div>
+          <div class="duration-opt" data-ms="86400000">24 hours</div>
+          <div class="duration-opt" data-ms="259200000">3 days</div>
+          <div class="duration-opt" data-ms="604800000">7 days</div>
+          <div class="duration-opt" data-ms="custom" id="custom-opt">Custom</div>
+        </div>
+        <div id="custom-input-row" style="display:none;margin-top:10px;display:none;align-items:center;gap:10px;">
+          <input id="cr-custom-hours" class="input" type="number" min="1" max="168" placeholder="Hours"
+            style="max-width:120px;" />
+          <span style="color:var(--c-text2);font-size:13px;">hours</span>
+        </div>
+      </div>
+
+      <div class="form-field">
+        <label class="form-label">Member Permissions</label>
+        <div class="perm-row">
+          <div class="perm-info">
+            <h4>Allow file uploads</h4>
+            <p>Members can upload files to the room</p>
+          </div>
+          <label class="toggle"><input type="checkbox" id="perm-upload" checked />
+            <div class="toggle-track"></div>
+          </label>
+        </div>
+        <div class="perm-row">
+          <div class="perm-info">
+            <h4>Allow file deletions</h4>
+            <p>Members can delete files they didn't upload</p>
+          </div>
+          <label class="toggle"><input type="checkbox" id="perm-delete" />
+            <div class="toggle-track"></div>
+          </label>
+        </div>
+        <div class="perm-row">
+          <div class="perm-info">
+            <h4>Allow chat</h4>
+            <p>Members can send messages in the live chat</p>
+          </div>
+          <label class="toggle"><input type="checkbox" id="perm-chat" checked />
+            <div class="toggle-track"></div>
+          </label>
+        </div>
+        <div class="perm-row">
+          <div class="perm-info">
+            <h4>Members can create folders</h4>
+            <p>Members can organize files into new folders</p>
+          </div>
+          <label class="toggle"><input type="checkbox" id="perm-folders" />
+            <div class="toggle-track"></div>
+          </label>
+        </div>
+      </div>
+
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-ghost" style="flex:1;" onclick="ROOMR.modal.hide('create-modal')">Cancel</button>
+        <button class="btn btn-primary" style="flex:2;" id="create-btn" onclick="createRoom()">Create Room →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── INVITE MODAL ── -->
+  <div class="modal-backdrop" id="invite-modal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">Invite Members</h2>
+        <button class="modal-close" onclick="ROOMR.modal.hide('invite-modal')">✕</button>
+      </div>
+      <p style="font-size:13px;color:var(--c-text2);margin-bottom:20px;">Share the room code or link with anyone you
+        want to collaborate with.</p>
+
+      <div class="form-field">
+        <label class="form-label">Room Code</label>
+        <div class="invite-box">
+          <div class="invite-code" id="inv-code">------</div>
+          <button class="copy-btn" id="copy-code-btn" onclick="copyCode()">Copy Code</button>
+        </div>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Room Link</label>
+        <div class="invite-box">
+          <div class="invite-link" id="inv-link">...</div>
+          <button class="copy-btn" id="copy-link-btn" onclick="copyLink()">Copy Link</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="width:100%;" onclick="openRoom(currentInviteRoomId)">Open Room →</button>
+    </div>
+  </div>
+
+  <!-- ── PROFILE MODAL ── -->
+  <div class="modal-backdrop" id="profile-modal">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h2 class="modal-title">Profile</h2>
+        <button class="modal-close" onclick="ROOMR.modal.hide('profile-modal')">✕</button>
+      </div>
+      <div style="text-align:center;margin-bottom:24px;">
+        <div class="avatar avatar-xl" id="prof-av" style="margin:0 auto 12px;"></div>
+        <div style="font-size:18px;font-weight:700;letter-spacing:-.03em;" id="prof-name"></div>
+        <div style="font-size:13px;color:var(--c-text2);" id="prof-email"></div>
+      </div>
+      <div class="form-field">
+        <label class="form-label">Display Name</label>
+        <input id="prof-name-input" class="input" type="text" />
+      </div>
+      <div style="display:flex;gap:10px;">
+        <button class="btn btn-ghost" style="flex:1;" onclick="ROOMR.modal.hide('profile-modal')">Cancel</button>
+        <button class="btn btn-primary" style="flex:1;" onclick="saveProfile()">Save</button>
+      </div>
+      <div style="margin-top:16px;">
+        <button class="btn btn-danger" style="width:100%;" onclick="ROOMR.auth.logout()">Sign Out</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="core.js"></script>
+  <script>
+    const me = ROOMR.auth.require();
+    if (!me) throw 0;
+
+    ROOMR.modal.init();
+
+    let currentTab = 'my';
+    let selectedDurationMs = 3600000;
+    let currentInviteRoomId = null;
+
+    // ── Init UI ──
+    const acColor = ROOMR.avatarColor(me.name);
+    document.getElementById('sidebar-avatar').textContent = ROOMR.initials(me.name);
+    document.getElementById('sidebar-avatar').style.background = acColor;
+    document.getElementById('sidebar-avatar').style.color = '#000';
+    document.getElementById('sidebar-name').textContent = me.name;
+    document.getElementById('sidebar-email').textContent = me.email;
+    document.getElementById('dd-name').textContent = me.name;
+    document.getElementById('dd-email').textContent = me.email;
+
+    // ── Duration selector ──
+    document.getElementById('duration-grid').addEventListener('click', e => {
+      const opt = e.target.closest('.duration-opt');
+      if (!opt) return;
+      document.querySelectorAll('.duration-opt').forEach(o => o.classList.remove('selected'));
+      opt.classList.add('selected');
+      if (opt.dataset.ms === 'custom') {
+        document.getElementById('custom-input-row').style.display = 'flex';
+        selectedDurationMs = null;
+      } else {
+        document.getElementById('custom-input-row').style.display = 'none';
+        selectedDurationMs = parseInt(opt.dataset.ms);
+      }
+    });
+
+    // ── Tab switching ──
+    function setTab(tab) {
+      currentTab = tab;
+      document.querySelectorAll('.tab,.nav-item[id^="nav-"]').forEach(el => el.classList.remove('active'));
+      document.getElementById('tab-' + tab)?.classList.add('active');
+      document.getElementById('nav-' + tab)?.classList.add('active');
+      const titles = { my: 'My Rooms', joined: 'Joined Rooms', all: 'All Rooms' };
+      const subs = { my: 'Rooms you created', joined: 'Rooms you joined', all: 'All your rooms' };
+      document.getElementById('page-title').textContent = titles[tab];
+      document.getElementById('page-sub').textContent = subs[tab];
+      renderRooms();
+    }
+
+    // ── Render rooms ──
+    function renderRooms() {
+      const all = ROOMR.rooms.forUser(me.id);
+      let rooms;
+      if (currentTab === 'my') rooms = all.filter(r => r.creatorId === me.id);
+      else if (currentTab === 'joined') rooms = all.filter(r => r.creatorId !== me.id);
+      else rooms = all;
+
+      const myCount = all.filter(r => r.creatorId === me.id).length;
+      const joinedCount = all.filter(r => r.creatorId !== me.id).length;
+      document.getElementById('my-count').textContent = myCount || '';
+      document.getElementById('joined-count').textContent = joinedCount || '';
+
+      const grid = document.getElementById('rooms-grid');
+      if (!rooms.length) {
+        const msgs = { my: 'Create your first room to get started', joined: 'Join a room using a room code above', all: 'No rooms yet — create or join one' };
+        grid.innerHTML = `<div class="empty" style="grid-column:1/-1"><div class="empty-icon">${currentTab === 'my' ? '🏠' : '🔗'}</div><div class="empty-title">${currentTab === 'all' ? 'No rooms yet' : 'No rooms here'}</div><div class="empty-sub">${msgs[currentTab]}</div></div>`;
+        return;
+      }
+
+      rooms.sort((a, b) => b.createdAt - a.createdAt);
+      grid.innerHTML = rooms.map(room => buildRoomCard(room)).join('');
+    }
+
+    function buildRoomCard(room) {
+      const expired = ROOMR.rooms.isExpired(room);
+      const left = ROOMR.rooms.timeLeft(room);
+      const pct = ROOMR.rooms.progress(room);
+      const isAdmin = room.creatorId === me.id;
+      const barClass = pct < 15 ? 'danger' : pct < 30 ? 'warn' : '';
+      const timerColor = pct < 15 ? 'var(--c-danger)' : pct < 30 ? 'var(--c-warn)' : 'var(--c-accent)';
+
+      return `
+    <div class="room-card" data-id="${room.id}">
+      <div class="room-card-top">
+        <div>
+          <div class="room-card-name">${ROOMR.escHtml(room.name)}</div>
+          <div class="room-card-desc">${ROOMR.escHtml(room.description || 'No description')}</div>
+        </div>
+        ${expired
+          ? '<span class="badge badge-gray">Expired</span>'
+          : `<span class="badge badge-green"><span class="pulse pulse-green"></span>Active</span>`}
+      </div>
+      ${isAdmin ? '<span class="badge badge-purple" style="margin-bottom:10px;">Admin</span>' : ''}
+      <div class="room-card-meta">
+        <span>👥 ${room.members.length} member${room.members.length !== 1 ? 's' : ''}</span>
+        <span>📁 ${room.files.length} file${room.files.length !== 1 ? 's' : ''}</span>
+        <span>💬 ${room.messages.filter(m => m.type !== 'system').length} msg${room.messages.filter(m => m.type !== 'system').length !== 1 ? 's' : ''}</span>
+      </div>
+      <div class="room-timer-block">
+        <div class="room-timer-top">
+          <span class="room-timer-label">${expired ? 'Expired' : 'Time remaining'}</span>
+          <span class="room-timer-code">${room.code}</span>
+        </div>
+        <div class="room-timer-val" style="color:${timerColor}" id="timer-val-${room.id}">${expired ? '— expired —' : ROOMR.fmtTime(left)}</div>
+        <div class="timer-bar"><div class="timer-bar-fill ${barClass}" id="timer-bar-${room.id}" style="width:${pct}%"></div></div>
+      </div>
+      <div class="room-card-actions">
+        ${!expired ? `<button class="btn btn-primary btn-sm" onclick="openRoom('${room.id}');event.stopPropagation()">Open →</button>` : ''}
+        <button class="btn btn-ghost btn-sm" onclick="showInvite('${room.id}');event.stopPropagation()">🔗 Invite</button>
+        ${isAdmin ? `<button class="btn btn-danger btn-sm" onclick="deleteRoom('${room.id}');event.stopPropagation()">Delete</button>` : ''}
+      </div>
+    </div>`;
+    }
+
+    // Click card to open
+    document.getElementById('rooms-grid').addEventListener('click', e => {
+      const card = e.target.closest('.room-card');
+      if (!card || e.target.closest('.btn')) return;
+      openRoom(card.dataset.id);
+    });
+
+    // Live timers
+    setInterval(() => {
+      ROOMR.rooms.forUser(me.id).forEach(room => {
+        const valEl = document.getElementById('timer-val-' + room.id);
+        const barEl = document.getElementById('timer-bar-' + room.id);
+        if (!valEl) return;
+        const expired = ROOMR.rooms.isExpired(room);
+        const left = ROOMR.rooms.timeLeft(room);
+        const pct = ROOMR.rooms.progress(room);
+        valEl.textContent = expired ? '— expired —' : ROOMR.fmtTime(left);
+        valEl.style.color = pct < 15 ? 'var(--c-danger)' : pct < 30 ? 'var(--c-warn)' : 'var(--c-accent)';
+        if (barEl) {
+          barEl.style.width = pct + '%';
+          barEl.className = 'timer-bar-fill ' + (pct < 15 ? 'danger' : pct < 30 ? 'warn' : '');
+        }
+      });
+    }, 1000);
+
+    // ── Create room ──
+    function openCreateModal() {
+      document.getElementById('cr-name').value = '';
+      document.getElementById('cr-desc').value = '';
+      ROOMR.modal.show('create-modal');
+      setTimeout(() => document.getElementById('cr-name').focus(), 150);
+    }
+
+    function createRoom() {
+      const name = document.getElementById('cr-name').value.trim();
+      if (!name) { ROOMR.toast('Please enter a room name.', 'error'); return; }
+
+      let duration = selectedDurationMs;
+      if (!duration) {
+        const h = parseInt(document.getElementById('cr-custom-hours').value);
+        if (!h || h < 1 || h > 168) { ROOMR.toast('Please enter a valid duration (1–168 hours).', 'error'); return; }
+        duration = h * 3600000;
+      }
+
+      const btn = document.getElementById('create-btn');
+      btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
+
+      setTimeout(() => {
+        const room = ROOMR.rooms.create(
+          name, duration,
+          {
+            description: document.getElementById('cr-desc').value.trim(),
+            membersCanUpload: document.getElementById('perm-upload').checked,
+            membersCanDelete: document.getElementById('perm-delete').checked,
+            membersCanChat: document.getElementById('perm-chat').checked,
+            membersCanCreateFolders: document.getElementById('perm-folders').checked,
+          },
+          me
+        );
+        ROOMR.modal.hide('create-modal');
+        btn.disabled = false; btn.textContent = 'Create Room →';
+        ROOMR.toast('Room "' + room.name + '" created!');
+        renderRooms();
+        showInvite(room.id);
+      }, 300);
+    }
+
+    // ── Join room ──
+    function focusJoin() { document.getElementById('join-input').focus(); }
+
+    function joinRoom() {
+      const code = document.getElementById('join-input').value.trim();
+      if (code.length < 4) { ROOMR.toast('Enter a valid room code.', 'error'); return; }
+      const result = ROOMR.rooms.join(code, me);
+      if (!result.ok) { ROOMR.toast(result.error, 'error'); return; }
+      ROOMR.toast('Joined "' + result.room.name + '"!');
+      document.getElementById('join-input').value = '';
+      openRoom(result.room.id);
+    }
+
+    document.getElementById('join-input').addEventListener('keydown', e => { if (e.key === 'Enter') joinRoom(); });
+
+    // ── Open room ──
+    function openRoom(id) {
+      const room = ROOMR.rooms.get(id);
+      if (!room) return;
+      if (ROOMR.rooms.isExpired(room)) { ROOMR.toast('This room has expired.', 'error'); return; }
+      location.href = 'room.html?id=' + id;
+    }
+
+    // ── Invite ──
+    function showInvite(id) {
+      const room = ROOMR.rooms.get(id);
+      if (!room) return;
+      currentInviteRoomId = id;
+      document.getElementById('inv-code').textContent = room.code;
+      const link = location.origin + location.pathname.replace('dashboard.html', '') + 'room.html?code=' + room.code;
+      document.getElementById('inv-link').textContent = link;
+      ROOMR.modal.show('invite-modal');
+    }
+
+    function copyCode() {
+      navigator.clipboard.writeText(document.getElementById('inv-code').textContent);
+      const btn = document.getElementById('copy-code-btn'); btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy Code'; btn.classList.remove('copied'); }, 2000);
+    }
+
+    function copyLink() {
+      navigator.clipboard.writeText(document.getElementById('inv-link').textContent);
+      const btn = document.getElementById('copy-link-btn'); btn.textContent = '✓ Copied!'; btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'Copy Link'; btn.classList.remove('copied'); }, 2000);
+    }
+
+    // ── Delete room ──
+    function deleteRoom(id) {
+      const room = ROOMR.rooms.get(id);
+      if (!room || !confirm(`Delete room "${room.name}"? This cannot be undone.`)) return;
+      ROOMR.rooms.delete(id);
+      ROOMR.toast('Room deleted.');
+      renderRooms();
+    }
+
+    // ── Profile ──
+    function openProfileModal() {
+      document.getElementById('prof-av').textContent = ROOMR.initials(me.name);
+      document.getElementById('prof-av').style.background = ROOMR.avatarColor(me.name);
+      document.getElementById('prof-av').style.color = '#000';
+      document.getElementById('prof-name').textContent = me.name;
+      document.getElementById('prof-email').textContent = me.email;
+      document.getElementById('prof-name-input').value = me.name;
+      toggleUserMenu();
+      ROOMR.modal.show('profile-modal');
+    }
+
+    function saveProfile() {
+      const newName = document.getElementById('prof-name-input').value.trim();
+      if (!newName) return;
+      ROOMR.auth.updateName(newName);
+      me.name = newName;
+      document.getElementById('sidebar-name').textContent = newName;
+      document.getElementById('sidebar-avatar').textContent = ROOMR.initials(newName);
+      ROOMR.modal.hide('profile-modal');
+      ROOMR.toast('Profile updated!');
+    }
+
+    // ── User menu ──
+    function toggleUserMenu() {
+      document.getElementById('user-dropdown').classList.toggle('open');
+    }
+    document.addEventListener('click', e => {
+      if (!e.target.closest('#user-card-btn') && !e.target.closest('#user-dropdown')) {
+        document.getElementById('user-dropdown').classList.remove('open');
+      }
+    });
+
+    // ── Check URL for code param ──
+    const urlCode = new URLSearchParams(location.search).get('code');
+    if (urlCode) {
+      document.getElementById('join-input').value = urlCode.toUpperCase();
+      joinRoom();
+    }
+
+    renderRooms();
+  </script>
+</body>
+
+</html>

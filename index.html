@@ -1,0 +1,220 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ROOMR — Ephemeral Collaboration Rooms</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+
+<body class="landing">
+  <nav class="land-nav">
+    <div class="land-nav-brand"><span>⏱</span> ROOMR</div>
+    <div class="land-nav-cta" id="nav-cta">
+      <a href="signin.html" class="btn btn-ghost btn-sm">Sign In</a>
+      <a href="signup.html" class="btn btn-primary btn-sm">Get Started</a>
+    </div>
+  </nav>
+
+  <section class="land-hero">
+    <div class="land-hero-bg">
+      <div class="land-hero-orb1"></div>
+      <div class="land-hero-orb2"></div>
+      <div class="land-hero-grid"></div>
+      <div class="land-hero-vignette"></div>
+    </div>
+    <div class="land-hero-content slide-up">
+      <div class="land-hero-kicker"><span class="pulse pulse-green"></span>Ephemeral · Secure · Zero-residue</div>
+      <h1 class="land-hero-title">Files that<br><span class="line-accent">disappear.</span></h1>
+      <p class="land-hero-sub">Create a room. Set a timer. Share files and chat in real-time.<br>When time's up — it's
+        all gone. No clutter. No trace.</p>
+      <div class="land-hero-cta">
+        <a href="signup.html" class="btn btn-primary btn-lg">Start a Room →</a>
+        <a href="signin.html" class="btn btn-ghost btn-lg">Sign In</a>
+      </div>
+      <div class="land-hero-stat-row">
+        <div class="land-stat">
+          <div class="land-stat-val">100%</div>
+          <div class="land-stat-label">Ephemeral</div>
+        </div>
+        <div class="land-stat-sep"></div>
+        <div class="land-stat">
+          <div class="land-stat-val">0</div>
+          <div class="land-stat-label">Data retained</div>
+        </div>
+        <div class="land-stat-sep"></div>
+        <div class="land-stat">
+          <div class="land-stat-val">∞</div>
+          <div class="land-stat-label">Peace of mind</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- APP PREVIEW MOCKUP -->
+  <section class="land-preview" style="padding-bottom:80px;">
+    <div class="land-preview-window">
+      <div class="land-preview-titlebar">
+        <div class="window-dots">
+          <div class="window-dot window-dot-r"></div>
+          <div class="window-dot window-dot-y"></div>
+          <div class="window-dot window-dot-g"></div>
+        </div>
+        <div class="land-preview-titlebar-name">Project Kickoff — ROOMR</div>
+        <div class="land-preview-titlebar-timer" id="preview-timer">⏱ 47:32</div>
+      </div>
+      <div class="land-preview-body">
+        <div class="land-preview-panel">
+          <div class="land-preview-panel-head">Files</div>
+          <div class="prev-folder"><span>📁</span> Documents</div>
+          <div style="padding-left:16px">
+            <div class="prev-file"><span>📕</span> brief.pdf</div>
+            <div class="prev-file"><span>📝</span> notes.txt</div>
+          </div>
+          <div class="prev-folder" style="margin-top:4px"><span>📁</span> Assets</div>
+          <div style="padding-left:16px">
+            <div class="prev-file"><span>🖼️</span> mockup-v2.png</div>
+            <div class="prev-file"><span>🎨</span> logo.svg</div>
+          </div>
+        </div>
+        <div class="land-preview-panel" style="border-right:1px solid var(--c-border);">
+          <div class="land-preview-panel-head">Live Chat</div>
+          <div class="prev-msg">
+            <div class="avatar avatar-sm" style="background:#00c896;flex-shrink:0;color:#000">JO</div>
+            <div class="prev-msg-bubble">
+              <div class="prev-msg-name">Jordan</div>I've uploaded the brief — let me know your thoughts 👀
+            </div>
+          </div>
+          <div class="prev-msg">
+            <div class="avatar avatar-sm" style="background:#7b61ff;flex-shrink:0;color:#fff">SA</div>
+            <div class="prev-msg-bubble">
+              <div class="prev-msg-name">Sarah</div>Colors are 🔥 — only the font needs tweaking
+            </div>
+          </div>
+          <div class="prev-msg prev-msg-own" style="flex-direction:row-reverse">
+            <div class="avatar avatar-sm" style="background:#00a8ff;flex-shrink:0;color:#000">ME</div>
+            <div class="prev-msg-bubble" style="background:rgba(0,200,150,.1);border-radius:10px 4px 10px 10px;">
+              <div class="prev-msg-name" style="text-align:right">You</div>Agreed — uploading revised version now...
+            </div>
+          </div>
+        </div>
+        <div class="land-preview-panel">
+          <div class="land-preview-panel-head">Members</div>
+          <div class="prev-member">
+            <div class="avatar avatar-sm" style="background:#00c896;color:#000">JO</div>
+            <div class="prev-member-name">Jordan</div><span class="badge badge-purple"
+              style="font-size:9px;padding:2px 6px;">admin</span>
+          </div>
+          <div class="prev-member">
+            <div class="avatar avatar-sm" style="background:#7b61ff;color:#fff">SA</div>
+            <div class="prev-member-name">Sarah</div>
+          </div>
+          <div class="prev-member">
+            <div class="avatar avatar-sm" style="background:#00a8ff;color:#000">AL</div>
+            <div class="prev-member-name">Alex</div>
+          </div>
+          <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--c-border)">
+            <div
+              style="font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:var(--c-text3);font-weight:600;margin-bottom:8px;">
+              Permissions</div>
+            <div style="font-size:11px;color:var(--c-text2);display:flex;flex-direction:column;gap:6px;">
+              <div style="display:flex;justify-content:space-between"><span>Uploads</span><span
+                  style="color:var(--c-accent)">✓ On</span></div>
+              <div style="display:flex;justify-content:space-between"><span>Deletions</span><span
+                  style="color:var(--c-danger)">✗ Off</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="land-features">
+    <div class="land-section-kicker">What makes ROOMR different</div>
+    <h2 class="land-section-title">Built to vanish<br>when the work is done.</h2>
+    <div class="land-feat-grid">
+      <div class="land-feat-card">
+        <div class="land-feat-icon">⏳</div>
+        <div class="land-feat-title">Time-bounded rooms</div>
+        <p class="land-feat-desc">Set a duration from 30 minutes to 7 days. When the clock hits zero, the room and
+          everything in it disappears automatically.</p>
+      </div>
+      <div class="land-feat-card">
+        <div class="land-feat-icon">💬</div>
+        <div class="land-feat-title">Live chat</div>
+        <p class="land-feat-desc">Real-time messaging synced across all room members via BroadcastChannel. Chat, share,
+          collaborate — all in context.</p>
+      </div>
+      <div class="land-feat-card">
+        <div class="land-feat-icon">📁</div>
+        <div class="land-feat-title">Organized file sharing</div>
+        <p class="land-feat-desc">Create folders, upload files, preview images and documents inline. Drag-and-drop
+          support with folder hierarchy.</p>
+      </div>
+      <div class="land-feat-card">
+        <div class="land-feat-icon">🔐</div>
+        <div class="land-feat-title">Admin controls</div>
+        <p class="land-feat-desc">Room creators control everything — who can upload, who can delete, how long the room
+          lives, and when to kill it.</p>
+      </div>
+      <div class="land-feat-card">
+        <div class="land-feat-icon">🔗</div>
+        <div class="land-feat-title">One-click invites</div>
+        <p class="land-feat-desc">Share a 6-character room code or a direct link. Anyone can join in seconds — no setup
+          required for guests.</p>
+      </div>
+      <div class="land-feat-card">
+        <div class="land-feat-icon">🌑</div>
+        <div class="land-feat-title">Zero residue</div>
+        <p class="land-feat-desc">No permanent storage. No logs. No data harvesting. Your session disappears completely
+          — by design.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="land-how">
+    <div class="land-section-kicker">How it works</div>
+    <h2 class="land-section-title">Four steps<br>to ephemeral.</h2>
+    <div class="land-steps">
+      <div class="land-step">
+        <div class="land-step-num">01</div>
+        <h3>Create a Room</h3>
+        <p>Name it, set a duration, configure member permissions. Takes under 10 seconds.</p>
+      </div>
+      <div class="land-step">
+        <div class="land-step-num">02</div>
+        <h3>Invite Your Team</h3>
+        <p>Share the 6-character code or direct link. Members join instantly, no sign-up required.</p>
+      </div>
+      <div class="land-step">
+        <div class="land-step-num">03</div>
+        <h3>Collaborate</h3>
+        <p>Upload files, organize folders, chat live — all synced in real time across every member.</p>
+      </div>
+      <div class="land-step">
+        <div class="land-step-num">04</div>
+        <h3>It Expires</h3>
+        <p>When time runs out, everything disappears. No cleanup, no residue, no trace.</p>
+      </div>
+    </div>
+  </section>
+
+  <footer class="land-footer">
+    <div class="land-footer-brand">⏱ ROOMR</div>
+    <div class="land-footer-copy">© 2025 ROOMR — Ephemeral by design.</div>
+    <a href="signup.html" class="btn btn-primary btn-sm">Get Started →</a>
+  </footer>
+
+  <script src="core.js"></script>
+  <script>
+    const me = ROOMR.auth.me();
+    if (me) {
+      document.getElementById('nav-cta').innerHTML = `<a href="dashboard.html" class="btn btn-ghost btn-sm">Dashboard</a><a href="dashboard.html" class="btn btn-primary btn-sm">Open Dashboard →</a>`;
+    }
+    let previewMs = 47 * 60 * 1000 + 32 * 1000;
+    setInterval(() => { previewMs = Math.max(0, previewMs - 1000); document.getElementById('preview-timer').textContent = '⏱ ' + ROOMR.fmtTime(previewMs); }, 1000);
+  </script>
+</body>
+
+</html>
